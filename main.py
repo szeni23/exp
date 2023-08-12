@@ -62,7 +62,7 @@ with st.sidebar:
         amount_paid = total_paid_by_persons.get(person, 0)  # get the total amount paid or default to 0
         st.write(f"{person} (Paid: ${amount_paid:.2f})")
 
-    st.subheader("Make Payment")
+    st.title("Make Payment")
     payer_transfer = st.selectbox("Who is transferring?", st.session_state.persons)
     recipient = st.selectbox("Who are they paying?", [p for p in st.session_state.persons if p != payer_transfer])
     transfer_amount = st.number_input("Amount in NZ$:", min_value=0.1, step=0.1, value=10.0)
