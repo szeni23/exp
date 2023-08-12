@@ -328,6 +328,32 @@ def convert_all_to_csv(expenses, persons, payments):
     return csv_data.getvalue()
 
 
+if st.button("Visualize Settlements"):
+    net = calculate_net_amounts(st.session_state.expenses, st.session_state.persons)
+    settlements = simplify_expenses(net)
+
+    G = nx.DiGraph()
+
+    for person in st.session_state.persons:
+        G.add_node(person)
+
+    for debtor, creditor, amount in settlements:
+        G.add_edge(debtor, creditor, weight=amount)
+
+    # Use circular_layout
+    pos = nx.circular_layout(G)
+
+    plt.figure(figsize=(10, 7))
+    nx.draw_networkx_nodes(G, pos, node_size=700)
+    nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.8, arrows=True, arrowstyle='-|>', arrowsize=20) # This line includes the arrows.
+    nx.draw_networkx_labels(G, pos, font_size=16)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels={(u, v): f"${d['weight']:.2f}" for u, v, d in G.edges(data=True)})
+
+    plt.title("Settlement Visualization")
+    st.pyplot(plt.gcf())
+
+
+
 st.subheader("Export Data")
 
 if st.button("Export All Data"):
