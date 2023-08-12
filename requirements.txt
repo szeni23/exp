@@ -1,4 +1,5 @@
 altair @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_b3vfgmibe1/croot/altair_1687526044832/work
+altair==4.1.0
 appnope @ file:///opt/concourse/worker/volumes/live/6ca6f098-d773-4461-5c91-a24a17435bda/volume/appnope_1606859448531/work
 asttokens @ file:///opt/conda/conda-bld/asttokens_1646925590279/work
 attrs @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_33k1uces4n/croot/attrs_1668696162258/work
