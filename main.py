@@ -65,7 +65,7 @@ with st.sidebar:
     st.subheader("Make Payment")
     payer_transfer = st.selectbox("Who is transferring?", st.session_state.persons)
     recipient = st.selectbox("Who are they paying?", [p for p in st.session_state.persons if p != payer_transfer])
-    transfer_amount = st.number_input("Amount in NZ$:", min_value=0.1, step=0.1)
+    transfer_amount = st.number_input("Amount in NZ$:", min_value=0.1, step=0.1, value=10.0)
 
     if st.button("Submit Payment"):
         transfer_data = {
@@ -79,7 +79,7 @@ with st.sidebar:
         # Create an adjustment in the expense list to reflect the payment
         owes_data = {payer_transfer: -transfer_amount, recipient: transfer_amount}
         adjustment_data = {
-            "description": f"{transfer_amount} Payment from {payer_transfer} to {recipient}",
+            "description": f"{transfer_amount}$ Payment from {payer_transfer} to {recipient}",
             "date": datetime.now().date(),
             "category": "Payment",
             "amount": 0,  # No net change in the total amount
@@ -97,7 +97,7 @@ st.title("Expense Splitter")
 
 expense_description = st.text_input("Expense Description:")
 expense_date = st.date_input("Date:", datetime.now())
-expense_amount = st.number_input("Amount:", min_value=0.1, step=0.1, key="expense_amount_input")
+expense_amount = st.number_input("Amount:", min_value=0.1, step=0.1, key="expense_amount_input", value=10.0)
 expense_category = st.selectbox("Category", ["Meals", "Transport", "Activities", "Other"])
 payer = st.selectbox("Who paid?", st.session_state.persons)
 split_between = st.multiselect("Split between:", st.session_state.persons)
