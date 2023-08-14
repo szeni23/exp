@@ -8,6 +8,8 @@ from io import BytesIO, StringIO
 import base64
 import networkx as nx
 import matplotlib.pyplot as plt
+import requests
+
 
 # Initialization
 if 'persons' not in st.session_state:
@@ -40,9 +42,22 @@ def calculate_total_paid_by_person(expenses):
     return total_paid
 
 
+def get_conversion_rate(from_currency, to_currency, api_key):
+    url = f"https://open.er-api.com/v6/latest/{from_currency}"
 
+    response = requests.get(url)
+    data = response.json()
+
+    if "rates" in data and to_currency in data["rates"]:
+        return data["rates"][to_currency]
+    else:
+        return 1
+
+
+API_KEY = "6fc7c518a064d7dd15226c6a"
 
 with st.sidebar:
+
     st.title("Add Person")
     person_name = st.text_input("Name:")
     if st.button("Add Person"):
@@ -96,6 +111,36 @@ with st.sidebar:
 
             # Update the sidebar to reflect changes in total paid
             st.session_state.update_sidebar = not st.session_state.update_sidebar
+
+        CURRENCIES = [
+            "AED", "AFN", "ALL", "AMD", "ANG", "AOA", "ARS", "AUD", "AWG", "AZN",
+            "BAM", "BBD", "BDT", "BGN", "BHD", "BIF", "BMD", "BND", "BOB", "BRL",
+            "BSD", "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHF", "CLP", "CNY",
+            "COP", "CRC", "CUC", "CUP", "CVE", "CZK", "DJF", "DKK", "DOP", "DZD",
+            "EGP", "ERN", "ETB", "EUR", "FJD", "FKP", "GBP", "GEL", "GGP", "GHS",
+            "GIP", "GMD", "GNF", "GTQ", "GYD", "HKD", "HNL", "HRK", "HTG", "HUF",
+            "IDR", "ILS", "IMP", "INR", "IQD", "IRR", "ISK", "JEP", "JMD", "JOD",
+            "JPY", "KES", "KGS", "KHR", "KMF", "KPW", "KRW", "KWD", "KYD", "KZT",
+            "LAK", "LBP", "LKR", "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD",
+            "MMK", "MNT", "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MYR", "MZN",
+            "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN", "PGK",
+            "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB", "RWF", "SAR",
+            "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLL", "SOS", "SPL", "SRD",
+            "STN", "SVC", "SYP", "SZL", "THB", "TJS", "TMT", "TND", "TOP", "TRY",
+            "TTD", "TVD", "TWD", "TZS", "UAH", "UGX", "USD", "UYU", "UZS", "VEF",
+            "VND", "VUV", "WST", "XAF", "XCD", "XDR", "XOF", "XPF", "YER", "ZAR",
+            "ZMW", "ZWL"
+        ]
+        st.subheader("Currency Converter")
+        source_currency = st.selectbox("Source Currency", CURRENCIES)
+        target_currency = st.selectbox("Target Currency", CURRENCIES)
+        amount = st.number_input("Amount", value=1.0)
+
+        if st.button("Convert"):
+            conversion_rate = get_conversion_rate(source_currency, target_currency, API_KEY)
+            converted_amount = amount * conversion_rate
+            st.write(f"{amount} {source_currency} is approximately {converted_amount:.2f} {target_currency}")
+
 st.title("✂︎ Expense Splitter ✂︎")
 if not st.session_state.persons:
     st.write("Please enter a name in the sidebar to get started!")
