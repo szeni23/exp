@@ -8,7 +8,7 @@ from io import BytesIO, StringIO
 import base64
 import networkx as nx
 import matplotlib.pyplot as plt
-
+import gender_guesser.detector as gender
 
 # Initialization
 if 'persons' not in st.session_state:
@@ -41,10 +41,22 @@ def calculate_total_paid_by_person(expenses):
     return total_paid
 
 
-# UI to add persons
+
+d = gender.Detector()
+def get_gender(name):
+    gender = d.get_gender(name)
+    if gender in ["male", "mostly_male"]:
+        return "male"
+    elif gender in ["female", "mostly_female"]:
+        return "female"
+    else:
+        return None
+
+
 with st.sidebar:
     st.title("Add Person")
     person_name = st.text_input("Name:")
+
     if st.button("Add Person"):
         if person_name not in st.session_state.persons:
             if not person_name:
@@ -55,16 +67,25 @@ with st.sidebar:
         else:
             st.warning(f"{person_name} already exists!")
 
-    # Signal to update the sidebar
     if st.session_state.update_sidebar:
         st.session_state.update_sidebar = False
-    if len(st.session_state.persons) > 0:
 
+    if len(st.session_state.persons) > 0:
         st.subheader("Persons:")
         total_paid_by_persons = calculate_total_paid_by_person(st.session_state.expenses)
+
         for person in st.session_state.persons:
-            amount_paid = total_paid_by_persons.get(person, 0)  # get the total amount paid or default to 0
-            st.write(f"{person} (Paid: ${amount_paid:.2f})")
+            gender = get_gender(person)
+            if gender == "male":
+                emoji = "👨"
+            elif gender == "female":
+                emoji = "👩"
+            else:
+                emoji = "🧑"
+
+            amount_paid = total_paid_by_persons.get(person, 0)
+            st.write(f"{emoji} {person} (Paid: ${amount_paid:.2f})")
+
     if len(st.session_state.persons) > 1:
         st.title("Make Payment")
         payer_transfer = st.selectbox("Who is transferring?", st.session_state.persons)
@@ -83,7 +104,7 @@ with st.sidebar:
             # Create an adjustment in the expense list to reflect the payment
             owes_data = {payer_transfer: -transfer_amount, recipient: transfer_amount}
             adjustment_data = {
-                "description": f"{transfer_amount}$ Payment from {payer_transfer} to {recipient}",
+                "description": f"{transfer_amount} NZD Payment from {payer_transfer} to {recipient}",
                 "date": datetime.now().date(),
                 "category": "Payment",
                 "amount": 0,  # No net change in the total amount
@@ -95,14 +116,14 @@ with st.sidebar:
 
             # Update the sidebar to reflect changes in total paid
             st.session_state.update_sidebar = not st.session_state.update_sidebar
-st.title("Expense Splitter")
+st.title("✂︎ Expense Splitter ✂︎")
 if not st.session_state.persons:
     st.write("Please enter a name in the sidebar to get started!")
 else:
 
     expense_description = st.text_input("Expense Description:")
     expense_date = st.date_input("Date:", datetime.now())
-    expense_amount = st.number_input("Amount:", min_value=0.1, step=0.1, key="expense_amount_input", value=10.0)
+    expense_amount = st.number_input("Amount:", min_value=0.0, step=0.1, key="expense_amount_input", value=0.0)
     expense_category = st.selectbox("Category", ["Meals", "Transport", "Activities", "Other"])
     payer = st.selectbox("Who paid?", st.session_state.persons)
     split_between = st.multiselect("Split between:", st.session_state.persons)
@@ -118,7 +139,8 @@ else:
 
         owes = {}  # Reset the owes dictionary
         for person in split_between:
-            owes[person] = st.number_input(f"Amount owed by {person}:", min_value=0.0, max_value=expense_amount, step=0.1,
+            owes[person] = st.number_input(f"Amount owed by {person}:", min_value=0.0, max_value=expense_amount,
+                                           step=0.1,
                                            value=default_split, key=f"owes_{person}")
 
     else:
@@ -131,6 +153,8 @@ else:
         if st.button("Add Expense"):
             if not expense_description:
                 st.error("Please enter a description!")
+            elif expense_amount == 0.0:
+                st.error("Please set the expense amount.")
             elif not owes:
                 st.error("Please select who the expense is split between!")
             elif sum(owes.values()) != expense_amount:
@@ -232,7 +256,7 @@ else:
             return settlements
 
     if len(st.session_state.expenses) > 0:
-        if st.button("Calculate Total"):
+        if st.button("Simlify Expenses"):
             totals = {person: 0 for person in st.session_state.persons}
 
             for expense in st.session_state.expenses:
@@ -250,16 +274,38 @@ else:
                     st.write(f"{person} should be paid back: ${-net_total:.2f}")
                 else:
                     st.write(f"{person} is all square.")
+            if len(st.session_state.persons) >= 2:
+                st.subheader("Simplify Expenses:")
 
-        if st.button("Simplify Expenses"):
-            if len(st.session_state.persons) < 2:
-                st.error("Please add at least 2 people to simplify expenses!")
-            else:
                 net = calculate_net_amounts(st.session_state.expenses, st.session_state.persons)
                 settlements = simplify_expenses(net)
 
                 for debtor, creditor, amount in settlements:
                     st.write(f"{debtor} should pay {creditor} ${amount:.2f}")
+
+                net = calculate_net_amounts(st.session_state.expenses, st.session_state.persons)
+                settlements = simplify_expenses(net)
+
+                G = nx.DiGraph()
+
+                for person in st.session_state.persons:
+                    G.add_node(person)
+
+                for debtor, creditor, amount in settlements:
+                    G.add_edge(debtor, creditor, weight=amount)
+
+                pos = nx.circular_layout(G)
+
+                plt.figure(figsize=(12, 9))
+                nx.draw_networkx_nodes(G, pos, node_size=1000, node_color='skyblue', edgecolors='black')
+                nx.draw_networkx_labels(G, pos, font_size=18, font_weight='bold')
+                nx.draw_networkx_edges(G, pos, width=2.0, edge_color='gray', alpha=0.6, arrows=True, arrowstyle='-|>',
+                                       arrowsize=25)
+                edge_labels = {(u, v): f"${d['weight']:.2f}" for u, v, d in G.edges(data=True)}
+                nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=12)
+                plt.title("Settlement Visualization", fontsize=20, fontweight='bold')
+                plt.axis('off')
+                st.pyplot(plt.gcf())
 
         st.subheader("Expense Trend Over Time:")
 
@@ -320,9 +366,10 @@ else:
 
             # Write expenses
             csv_data.write("Expenses\n")
-            expenses_writer = csv.DictWriter(csv_data, fieldnames=expenses[0].keys())
-            expenses_writer.writeheader()
-            expenses_writer.writerows(expenses)
+            if expenses:
+                expenses_writer = csv.DictWriter(csv_data, fieldnames=expenses[0].keys())
+                expenses_writer.writeheader()
+                expenses_writer.writerows(expenses)
 
             # Spacer
             csv_data.write("\n\n")
@@ -339,37 +386,14 @@ else:
 
             # Write payments
             csv_data.write("Payments\n")
-            payments_writer = csv.DictWriter(csv_data, fieldnames=payments[0].keys())
-            payments_writer.writeheader()
-            payments_writer.writerows(payments)
+            if payments:
+                payments_writer = csv.DictWriter(csv_data, fieldnames=payments[0].keys())
+                payments_writer.writeheader()
+                payments_writer.writerows(payments)
 
             csv_data.seek(0)
             return csv_data.getvalue()
 
-
-        if st.button("Visualize Settlements"):
-            net = calculate_net_amounts(st.session_state.expenses, st.session_state.persons)
-            settlements = simplify_expenses(net)
-
-            G = nx.DiGraph()
-
-            for person in st.session_state.persons:
-                G.add_node(person)
-
-            for debtor, creditor, amount in settlements:
-                G.add_edge(debtor, creditor, weight=amount)
-
-            # Use circular_layout
-            pos = nx.circular_layout(G)
-
-            plt.figure(figsize=(10, 7))
-            nx.draw_networkx_nodes(G, pos, node_size=700)
-            nx.draw_networkx_edges(G, pos, width=1.0, alpha=0.8, arrows=True, arrowstyle='-|>', arrowsize=20) # This line includes the arrows.
-            nx.draw_networkx_labels(G, pos, font_size=16)
-            nx.draw_networkx_edge_labels(G, pos, edge_labels={(u, v): f"${d['weight']:.2f}" for u, v, d in G.edges(data=True)})
-
-            plt.title("Settlement Visualization")
-            st.pyplot(plt.gcf())
 
         if st.button("Export All Data"):
             # Check if there's any data to export
