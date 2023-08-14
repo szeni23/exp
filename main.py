@@ -8,7 +8,6 @@ from io import BytesIO, StringIO
 import base64
 import networkx as nx
 import matplotlib.pyplot as plt
-import gender_guesser.detector as gender
 
 # Initialization
 if 'persons' not in st.session_state:
@@ -42,21 +41,10 @@ def calculate_total_paid_by_person(expenses):
 
 
 
-d = gender.Detector()
-def get_gender(name):
-    gender = d.get_gender(name)
-    if gender in ["male", "mostly_male"]:
-        return "male"
-    elif gender in ["female", "mostly_female"]:
-        return "female"
-    else:
-        return None
-
 
 with st.sidebar:
     st.title("Add Person")
     person_name = st.text_input("Name:")
-
     if st.button("Add Person"):
         if person_name not in st.session_state.persons:
             if not person_name:
@@ -67,24 +55,16 @@ with st.sidebar:
         else:
             st.warning(f"{person_name} already exists!")
 
+    # Signal to update the sidebar
     if st.session_state.update_sidebar:
         st.session_state.update_sidebar = False
-
     if len(st.session_state.persons) > 0:
+
         st.subheader("Persons:")
         total_paid_by_persons = calculate_total_paid_by_person(st.session_state.expenses)
-
         for person in st.session_state.persons:
-            gender = get_gender(person)
-            if gender == "male":
-                emoji = "👨"
-            elif gender == "female":
-                emoji = "👩"
-            else:
-                emoji = "🧑"
-
-            amount_paid = total_paid_by_persons.get(person, 0)
-            st.write(f"{emoji} {person} (Paid: ${amount_paid:.2f})")
+            amount_paid = total_paid_by_persons.get(person, 0)  # get the total amount paid or default to 0
+            st.write(f"{person} (Paid: ${amount_paid:.2f})")
 
     if len(st.session_state.persons) > 1:
         st.title("Make Payment")
