@@ -10,7 +10,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import requests
 
-
 # Initialization
 if 'persons' not in st.session_state:
     st.session_state.persons = []
@@ -42,6 +41,48 @@ def calculate_total_paid_by_person(expenses):
     return total_paid
 
 
+def calculate_net_amounts(expenses, persons):
+    net = {person: 0 for person in persons}
+
+    for expense in expenses:
+        payer = expense['payer']
+        for person, amount_owed in expense['owes'].items():
+            # Subtract the amount the person owes
+            net[person] -= amount_owed
+            # Add the amount to the payer
+            net[payer] += amount_owed
+
+    return net
+
+
+def simplify_expenses(net):
+    debtors = sorted([(person, amount) for person, amount in net.items() if amount < 0], key=lambda x: x[1])
+    creditors = sorted([(person, amount) for person, amount in net.items() if amount > 0], key=lambda x: x[1],
+                       reverse=True)
+
+    settlements = []
+
+    while debtors and creditors:
+        debtor, debt_amount = debtors[0]
+        creditor, credit_amount = creditors[0]
+
+        # If the absolute debt amount is greater than or equal to the credit amount, pay the entire credit
+        if abs(debt_amount) >= credit_amount:
+            settlements.append((debtor, creditor, credit_amount))
+            debtors[0] = (debtor, debt_amount + credit_amount)
+            creditors.pop(0)
+        else:
+            settlements.append((debtor, creditor, abs(debt_amount)))
+            creditors[0] = (creditor, credit_amount + debt_amount)
+            debtors.pop(0)
+
+        # Clean up lists: remove those whose amounts have been settled
+        debtors = [item for item in debtors if item[1] < 0]
+        creditors = [item for item in creditors if item[1] > 0]
+
+    return settlements
+
+
 def get_conversion_rate(from_currency, to_currency, api_key):
     url = f"https://open.er-api.com/v6/latest/{from_currency}"
 
@@ -57,7 +98,6 @@ def get_conversion_rate(from_currency, to_currency, api_key):
 API_KEY = "6fc7c518a064d7dd15226c6a"
 
 with st.sidebar:
-
     st.title("Add Person")
     person_name = st.text_input("Name:")
     if st.button("Add Person"):
@@ -132,9 +172,12 @@ with st.sidebar:
             "ZMW", "ZWL"
         ]
         st.subheader("Currency Converter")
-        source_currency = st.selectbox("Source Currency", CURRENCIES)
-        target_currency = st.selectbox("Target Currency", CURRENCIES)
+        source_currency = st.selectbox("Source Currency", CURRENCIES, index=CURRENCIES.index("NZD"))
+        target_currency = st.selectbox("Target Currency", CURRENCIES, index=CURRENCIES.index("CHF"))
         amount = st.number_input("Amount", value=1.0)
+        conversion_rate = get_conversion_rate(source_currency, target_currency, API_KEY)
+        converted_amount = amount * conversion_rate
+        st.write(f"{amount} {source_currency} is approximately {converted_amount:.2f} {target_currency}")
 
         if st.button("Convert"):
             conversion_rate = get_conversion_rate(source_currency, target_currency, API_KEY)
@@ -197,6 +240,58 @@ else:
                 st.success("Expense added!")
                 st.session_state.update_sidebar = not st.session_state.update_sidebar
 
+            if len(st.session_state.expenses) > 0:
+                totals = {person: 0 for person in st.session_state.persons}
+
+                for expense in st.session_state.expenses:
+                    for person, amount in expense['owes'].items():
+                        totals[person] += amount
+
+                for expense in st.session_state.expenses:
+                    if expense['payer'] in totals:
+                        totals[expense['payer']] -= expense['amount']
+
+                for person, net_total in totals.items():
+                    if net_total > 0:
+                        st.write(f"{person} owes: ${net_total:.2f}")
+                    elif net_total < 0:
+                        st.write(f"{person} should be paid back: ${-net_total:.2f}")
+                    else:
+                        st.write(f"{person} is all square.")
+                if len(st.session_state.persons) >= 2:
+                    st.subheader("Simplify Expenses:")
+
+                    net = calculate_net_amounts(st.session_state.expenses, st.session_state.persons)
+                    settlements = simplify_expenses(net)
+
+                    for debtor, creditor, amount in settlements:
+                        st.write(f"{debtor} should pay {creditor} ${amount:.2f}")
+
+                    net = calculate_net_amounts(st.session_state.expenses, st.session_state.persons)
+                    settlements = simplify_expenses(net)
+
+                    G = nx.DiGraph()
+
+                    for person in st.session_state.persons:
+                        G.add_node(person)
+
+                    for debtor, creditor, amount in settlements:
+                        G.add_edge(debtor, creditor, weight=amount)
+
+                    pos = nx.circular_layout(G)
+
+                    plt.figure(figsize=(12, 9))
+                    nx.draw_networkx_nodes(G, pos, node_size=1000, node_color='skyblue', edgecolors='black')
+                    nx.draw_networkx_labels(G, pos, font_size=18, font_weight='bold')
+                    nx.draw_networkx_edges(G, pos, width=2.0, edge_color='gray', alpha=0.6, arrows=True,
+                                           arrowstyle='-|>',
+                                           arrowsize=25)
+                    edge_labels = {(u, v): f"${d['weight']:.2f}" for u, v, d in G.edges(data=True)}
+                    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=12)
+                    plt.title("Settlement Visualization", fontsize=20, fontweight='bold')
+                    plt.axis('off')
+                    st.pyplot(plt.gcf())
+
     else:
         idx_to_edit = st.session_state.edit_idx
         expense_to_edit = st.session_state.expenses[idx_to_edit]
@@ -236,101 +331,6 @@ else:
 
             df = pd.DataFrame(data, columns=["Description", "Date", "Payer", "Category", "Amount", "Person"])
             st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
-
-
-        def calculate_net_amounts(expenses, persons):
-            net = {person: 0 for person in persons}
-
-            for expense in expenses:
-                payer = expense['payer']
-                for person, amount_owed in expense['owes'].items():
-                    # Subtract the amount the person owes
-                    net[person] -= amount_owed
-                    # Add the amount to the payer
-                    net[payer] += amount_owed
-
-            return net
-
-
-        # Simplify expenses
-        def simplify_expenses(net):
-            debtors = sorted([(person, amount) for person, amount in net.items() if amount < 0], key=lambda x: x[1])
-            creditors = sorted([(person, amount) for person, amount in net.items() if amount > 0], key=lambda x: x[1],
-                               reverse=True)
-
-            settlements = []
-
-            while debtors and creditors:
-                debtor, debt_amount = debtors[0]
-                creditor, credit_amount = creditors[0]
-
-                # If the absolute debt amount is greater than or equal to the credit amount, pay the entire credit
-                if abs(debt_amount) >= credit_amount:
-                    settlements.append((debtor, creditor, credit_amount))
-                    debtors[0] = (debtor, debt_amount + credit_amount)
-                    creditors.pop(0)
-                else:
-                    settlements.append((debtor, creditor, abs(debt_amount)))
-                    creditors[0] = (creditor, credit_amount + debt_amount)
-                    debtors.pop(0)
-
-                # Clean up lists: remove those whose amounts have been settled
-                debtors = [item for item in debtors if item[1] < 0]
-                creditors = [item for item in creditors if item[1] > 0]
-
-            return settlements
-
-    if len(st.session_state.expenses) > 0:
-        if st.button("Simlify Expenses"):
-            totals = {person: 0 for person in st.session_state.persons}
-
-            for expense in st.session_state.expenses:
-                for person, amount in expense['owes'].items():
-                    totals[person] += amount
-
-            for expense in st.session_state.expenses:
-                if expense['payer'] in totals:
-                    totals[expense['payer']] -= expense['amount']
-
-            for person, net_total in totals.items():
-                if net_total > 0:
-                    st.write(f"{person} owes: ${net_total:.2f}")
-                elif net_total < 0:
-                    st.write(f"{person} should be paid back: ${-net_total:.2f}")
-                else:
-                    st.write(f"{person} is all square.")
-            if len(st.session_state.persons) >= 2:
-                st.subheader("Simplify Expenses:")
-
-                net = calculate_net_amounts(st.session_state.expenses, st.session_state.persons)
-                settlements = simplify_expenses(net)
-
-                for debtor, creditor, amount in settlements:
-                    st.write(f"{debtor} should pay {creditor} ${amount:.2f}")
-
-                net = calculate_net_amounts(st.session_state.expenses, st.session_state.persons)
-                settlements = simplify_expenses(net)
-
-                G = nx.DiGraph()
-
-                for person in st.session_state.persons:
-                    G.add_node(person)
-
-                for debtor, creditor, amount in settlements:
-                    G.add_edge(debtor, creditor, weight=amount)
-
-                pos = nx.circular_layout(G)
-
-                plt.figure(figsize=(12, 9))
-                nx.draw_networkx_nodes(G, pos, node_size=1000, node_color='skyblue', edgecolors='black')
-                nx.draw_networkx_labels(G, pos, font_size=18, font_weight='bold')
-                nx.draw_networkx_edges(G, pos, width=2.0, edge_color='gray', alpha=0.6, arrows=True, arrowstyle='-|>',
-                                       arrowsize=25)
-                edge_labels = {(u, v): f"${d['weight']:.2f}" for u, v, d in G.edges(data=True)}
-                nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=12)
-                plt.title("Settlement Visualization", fontsize=20, fontweight='bold')
-                plt.axis('off')
-                st.pyplot(plt.gcf())
 
         st.subheader("Expense Trend Over Time:")
 
