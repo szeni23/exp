@@ -17,7 +17,6 @@ tabs = {
 def main():
     st.set_page_config(
         page_title="✂︎ Expense Splitter ✂︎",
-        page_icon="✂︎",
         layout="wide"
     )
 
