@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import requests
 
 # Initialization
+if 'update_sidebar' not in st.session_state:
+    st.session_state.update_sidebar = False
 if 'persons' not in st.session_state:
     st.session_state.persons = []
 
@@ -19,12 +21,9 @@ if 'expenses' not in st.session_state:
 
 if 'transfers' not in st.session_state:
     st.session_state.transfers = []
-
-if 'update_sidebar' not in st.session_state:
-    st.session_state.update_sidebar = False
-
 if 'previous_split_between' not in st.session_state:
     st.session_state.previous_split_between = []
+
 
 def page1():
     def calculate_total_paid_by_person(expenses):
@@ -40,7 +39,6 @@ def page1():
 
         return total_paid
 
-
     def calculate_net_amounts(expenses, persons):
         net = {person: 0 for person in persons}
 
@@ -53,7 +51,6 @@ def page1():
                 net[payer] += amount_owed
 
         return net
-
 
     def simplify_expenses(net):
         debtors = sorted([(person, amount) for person, amount in net.items() if amount < 0], key=lambda x: x[1])
@@ -82,7 +79,6 @@ def page1():
 
         return settlements
 
-
     def get_conversion_rate(from_currency, to_currency, api_key):
         url = f"https://open.er-api.com/v6/latest/{from_currency}"
 
@@ -93,7 +89,6 @@ def page1():
             return data["rates"][to_currency]
         else:
             return 1
-
 
     def convert_all_to_csv(expenses, persons, payments):
         """
@@ -131,7 +126,6 @@ def page1():
         csv_data.seek(0)
         return csv_data.getvalue()
 
-
     API_KEY = "6fc7c518a064d7dd15226c6a"
 
     with st.sidebar:
@@ -160,7 +154,8 @@ def page1():
         if len(st.session_state.persons) > 1:
             if st.checkbox("Make Payment"):
                 payer_transfer = st.selectbox("Who is transferring?", st.session_state.persons)
-                recipient = st.selectbox("Who are they paying?", [p for p in st.session_state.persons if p != payer_transfer])
+                recipient = st.selectbox("Who are they paying?",
+                                         [p for p in st.session_state.persons if p != payer_transfer])
                 transfer_amount = st.number_input("Amount in NZ$:", min_value=0.1, step=0.1, value=10.0)
 
                 if st.button("Submit Payment"):
