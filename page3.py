@@ -1,4 +1,5 @@
 import streamlit as st
+paw = "1234"
 
 def page3():
     st.title("Admin Area")
