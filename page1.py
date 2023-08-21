@@ -127,8 +127,6 @@ def page1():
         csv_data.seek(0)
         return csv_data.getvalue()
 
-    API_KEY = "6fc7c518a064d7dd15226c6a"
-
     with st.sidebar:
         st.title("Add Person")
         person_name = st.text_input("Name:")
