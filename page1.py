@@ -127,6 +127,65 @@ def page1():
         csv_data.seek(0)
         return csv_data.getvalue()
 
+    API_KEY = "6fc7c518a064d7dd15226c6a"
+
+    with st.sidebar:
+        st.title("Add Person")
+        person_name = st.text_input("Name:")
+        if st.button("Add Person"):
+            if person_name not in st.session_state.persons:
+                if not person_name:
+                    st.warning("Please enter a name!")
+                else:
+                    st.session_state.persons.append(person_name)
+                    st.success(f"Added {person_name}")
+            else:
+                st.warning(f"{person_name} already exists!")
+
+        # Signal to update the sidebar
+        if st.session_state.update_sidebar:
+            st.session_state.update_sidebar = False
+        if len(st.session_state.persons) > 0:
+
+            st.subheader("Persons:")
+            total_paid_by_persons = calculate_total_paid_by_person(st.session_state.expenses)
+            for person in st.session_state.persons:
+                amount_paid = total_paid_by_persons.get(person, 0)  # get the total amount paid or default to 0
+                st.write(f"{person} (Paid: ${amount_paid:.2f})")
+        if len(st.session_state.persons) > 1:
+            if st.checkbox("Make Payment"):
+                payer_transfer = st.selectbox("Who is transferring?", st.session_state.persons)
+                recipient = st.selectbox("Who are they paying?",
+                                         [p for p in st.session_state.persons if p != payer_transfer])
+                transfer_amount = st.number_input("Amount in NZ$:", min_value=0.1, step=0.1, value=10.0)
+
+                if st.button("Submit Payment"):
+                    transfer_data = {
+                        "payer": payer_transfer,
+                        "recipient": recipient,
+                        "amount": transfer_amount,
+                        "date": datetime.now().date()
+                    }
+                    st.session_state.transfers.append(transfer_data)
+
+                    # Create an adjustment in the expense list to reflect the payment
+                    owes_data = {payer_transfer: -transfer_amount, recipient: transfer_amount}
+                    adjustment_data = {
+                        "description": f"{transfer_amount} NZD Payment from {payer_transfer} to {recipient}",
+                        "date": datetime.now().date(),
+                        "category": "Payment",
+                        "amount": 0,  # No net change in the total amount
+                        "payer": payer_transfer,  # This is just to show who initiated the payment
+                        "owes": owes_data,
+                        "recurring": False
+                    }
+                    st.session_state.expenses.append(adjustment_data)
+
+                    # Update the sidebar to reflect changes in total paid
+                    st.session_state.update_sidebar = not st.session_state.update_sidebar
+
+                    st.success(f"Added ${transfer_amount:.2f} payment from {payer_transfer} to {recipient}.")
+
     st.title("✂︎ Expense Splitter ✂︎")
     if not st.session_state.persons:
         st.write("Please enter a name in the sidebar to get started!")
