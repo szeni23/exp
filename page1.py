@@ -112,6 +112,7 @@ def page1():
         csv_data.seek(0)
         return csv_data.getvalue()
 
+    API_KEY = "6fc7c518a064d7dd15226c6a"
     with st.sidebar:
         st.title("Add Person")
         person_name = st.text_input("Name:")
@@ -168,6 +169,33 @@ def page1():
                     st.session_state.update_sidebar = not st.session_state.update_sidebar
 
                     st.success(f"Added ${transfer_amount:.2f} payment from {payer_transfer} to {recipient}.")
+
+            CURRENCIES = [
+                "AED", "AFN", "ALL", "AMD", "ANG", "AOA", "ARS", "AUD", "AWG", "AZN",
+                "BAM", "BBD", "BDT", "BGN", "BHD", "BIF", "BMD", "BND", "BOB", "BRL",
+                "BSD", "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHF", "CLP", "CNY",
+                "COP", "CRC", "CUC", "CUP", "CVE", "CZK", "DJF", "DKK", "DOP", "DZD",
+                "EGP", "ERN", "ETB", "EUR", "FJD", "FKP", "GBP", "GEL", "GGP", "GHS",
+                "GIP", "GMD", "GNF", "GTQ", "GYD", "HKD", "HNL", "HRK", "HTG", "HUF",
+                "IDR", "ILS", "IMP", "INR", "IQD", "IRR", "ISK", "JEP", "JMD", "JOD",
+                "JPY", "KES", "KGS", "KHR", "KMF", "KPW", "KRW", "KWD", "KYD", "KZT",
+                "LAK", "LBP", "LKR", "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD",
+                "MMK", "MNT", "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MYR", "MZN",
+                "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN", "PGK",
+                "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB", "RWF", "SAR",
+                "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLL", "SOS", "SPL", "SRD",
+                "STN", "SVC", "SYP", "SZL", "THB", "TJS", "TMT", "TND", "TOP", "TRY",
+                "TTD", "TVD", "TWD", "TZS", "UAH", "UGX", "USD", "UYU", "UZS", "VEF",
+                "VND", "VUV", "WST", "XAF", "XCD", "XDR", "XOF", "XPF", "YER", "ZAR",
+                "ZMW", "ZWL"
+            ]
+            if st.checkbox("Currency Converter"):
+                source_currency = st.selectbox("Source Currency", CURRENCIES, index=CURRENCIES.index("NZD"))
+                target_currency = st.selectbox("Target Currency", CURRENCIES, index=CURRENCIES.index("CHF"))
+                amount = st.number_input("Amount", value=1.0)
+                conversion_rate = get_conversion_rate(source_currency, target_currency, API_KEY)
+                converted_amount = amount * conversion_rate
+                st.write(f"{amount} {source_currency} is approximately {converted_amount:.2f} {target_currency}")
 
     st.title("✂︎ Expense Splitter ✂︎")
     if not st.session_state.persons:
