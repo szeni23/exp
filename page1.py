@@ -112,6 +112,7 @@ def page1():
         csv_data.seek(0)
         return csv_data.getvalue()
 
+    API_KEY = "6fc7c518a064d7dd15226c6a"
     with st.sidebar:
         st.title("Add Person")
         person_name = st.text_input("Name:")
@@ -141,7 +142,7 @@ def page1():
                 recipient = st.selectbox("Who are they paying?",
                                          [p for p in st.session_state.persons if p != payer_transfer])
                 transfer_amount = st.number_input("Amount in NZ$:", min_value=0.1, step=0.1, value=10.0)
-
+            
                 if st.button("Submit Payment"):
                     transfer_data = {
                         "payer": payer_transfer,
