@@ -10,21 +10,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import requests
 
-if "update_sidebar" not in st.session_state:
-    st.session_state.update_sidebar = False
-
-if 'persons' not in st.session_state:
-    st.session_state.persons = []
-
-if 'expenses' not in st.session_state:
-    st.session_state.expenses = []
-
-if 'transfers' not in st.session_state:
-    st.session_state.transfers = []
-
-if 'previous_split_between' not in st.session_state:
-    st.session_state.previous_split_between = []
-
 
 def page1():
     def calculate_total_paid_by_person(expenses):
