@@ -11,6 +11,22 @@ tabs = {
     "About": page3,
 }
 def main():
+
+    if "update_sidebar" not in st.session_state:
+        st.session_state.update_sidebar = False
+
+    if 'persons' not in st.session_state:
+        st.session_state.persons = []
+
+    if 'expenses' not in st.session_state:
+        st.session_state.expenses = []
+
+    if 'transfers' not in st.session_state:
+        st.session_state.transfers = []
+
+    if 'previous_split_between' not in st.session_state:
+        st.session_state.previous_split_between = []
+
     st.set_page_config(
         page_title="ExpenseSplitter",
         layout="wide"
