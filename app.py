@@ -4,13 +4,11 @@ import streamlit as st
 from page1 import page1
 from page2 import page2
 from page3 import page3
-from page4 import page4
 
 tabs = {
     "Expense Splitter": page1,
     "McCrocsMagicX AG edition": page2,
-    "Admin": page3,
-    "About": page4
+    "About": page3,
 }
 def main():
     st.set_page_config(
